@@ -1,0 +1,12 @@
+.venv/
+
+artifacts/
+
+*.pyc
+__pycache__/
+logs/
+
+
+*.parquet
+
+Plaid_transactions_for_categorization.csv
