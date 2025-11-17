@@ -8,11 +8,20 @@ Uses pre-computed embeddings to train two separate classifiers:
 
 import numpy as np
 import joblib
-from sklearn.linear_model import LogisticRegression, SGDClassifier
+from sklearn.linear_model import SGDClassifier
 from sklearn.metrics import accuracy_score
 import config
 from datetime import datetime
 import os
+
+# Try to import XGBoost
+try:
+    from xgboost import XGBClassifier
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+    print("⚠ XGBoost not available. Install with: pip install xgboost")
+    print("  Falling back to SGDClassifier")
 
 print("=" * 80)
 print("TRANSACTION CATEGORIZATION - MODEL TRAINING")
@@ -35,29 +44,22 @@ print(f"✓ Subcategory train labels: {y_sub_train.shape} (unique: {len(np.uniqu
 # ========== Train Category Classifier ==========
 print("\n[2/3] Training CATEGORY classifier...")
 
-# Choose classifier based on dataset size
-use_sgd = len(X_train) > 1_000_000  # Use SGD for large datasets
+# Choose classifier based on configuration
+use_xgboost = config.USE_XGBOOST and XGBOOST_AVAILABLE
 
-if use_sgd:
-    print(f"  Model: SGDClassifier (memory-efficient for large datasets)")
-    print(f"  Training samples: {len(X_train):,} (using online learning)")
+if use_xgboost:
+    print(f"  Model: XGBClassifier (better for imbalanced data)")
+    print(f"  Parameters: {config.XGBOOST_PARAMS}")
     
-    cat_clf = SGDClassifier(
-        loss='log_loss',  # Logistic regression
-        penalty='l2',
-        alpha=0.0001,
-        max_iter=100,
-        class_weight='balanced',
-        verbose=1,
-        n_jobs=1,
-        random_state=42,
-    )
+    cat_clf = XGBClassifier(**config.XGBOOST_PARAMS)
 else:
-    print(f"  Model: LogisticRegression")
-    print(f"  Parameters: {config.LOGREG_PARAMS}")
-    cat_clf = LogisticRegression(**config.LOGREG_PARAMS)
+    print(f"  Model: SGDClassifier (memory-efficient online learning)")
+    print(f"  Parameters: {config.SGD_PARAMS}")
+    
+    cat_clf = SGDClassifier(**config.SGD_PARAMS)
 
 print(f"  Classes: {len(np.unique(y_cat_train))}")
+print(f"  Training samples: {len(X_train):,}")
 
 start_time = datetime.now()
 print(f"\n  Training started at {start_time.strftime('%H:%M:%S')}...")
@@ -77,26 +79,19 @@ print(f"✓ Saved category classifier to {config.CAT_CLASSIFIER_PATH}")
 # ========== Train Subcategory Classifier ==========
 print("\n[3/3] Training SUBCATEGORY classifier...")
 
-if use_sgd:
-    print(f"  Model: SGDClassifier (memory-efficient for large datasets)")
-    print(f"  Training samples: {len(X_train):,} (using online learning)")
+if use_xgboost:
+    print(f"  Model: XGBClassifier (better for imbalanced data)")
+    print(f"  Parameters: {config.XGBOOST_PARAMS}")
     
-    sub_clf = SGDClassifier(
-        loss='log_loss',  # Logistic regression
-        penalty='l2',
-        alpha=0.0001,
-        max_iter=100,
-        class_weight='balanced',
-        verbose=1,
-        n_jobs=1,
-        random_state=42,
-    )
+    sub_clf = XGBClassifier(**config.XGBOOST_PARAMS)
 else:
-    print(f"  Model: LogisticRegression")
-    print(f"  Parameters: {config.LOGREG_PARAMS}")
-    sub_clf = LogisticRegression(**config.LOGREG_PARAMS)
+    print(f"  Model: SGDClassifier (memory-efficient online learning)")
+    print(f"  Parameters: {config.SGD_PARAMS}")
+    
+    sub_clf = SGDClassifier(**config.SGD_PARAMS)
 
 print(f"  Classes: {len(np.unique(y_sub_train))}")
+print(f"  Training samples: {len(X_train):,}")
 
 start_time = datetime.now()
 print(f"\n  Training started at {start_time.strftime('%H:%M:%S')}...")
